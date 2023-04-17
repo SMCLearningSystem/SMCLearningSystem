@@ -1,0 +1,237 @@
+<div class="custom-card w-100">
+    <div class="custom-card-header">Pregnancy Tracker</div>
+    <div class="form-group col-12 col-md-6 m-0 mt-3 p-0 pr-3">
+        <label for="sexDate">Last date of intercourse</label>
+        <input type="date" class="form-control" id="sexDate" name="sexDate">
+        <button onclick="submitPregnancy()" class="btn btn-outline-success mt-2">Track Pregnancy</button>
+    </div>
+    <% if (pregnancy && pregnancy.phaseDetails) { %>
+        <div class="w-100 m-0 mt-3 p-0">
+            <h5>Pregnancy Details: </h5>
+            <h5 class="phase-status"><%= pregnancy.phaseDetails.title %></h5>
+            <p class="phase-details"><%= pregnancy.phaseDetails.details %></p>
+        </div>
+    <% } %>
+    <div class="text-center w-100 py-5" style="display: flex; flex-direction: row; justify-content: center;">
+        <button class="btn btn-primary" type="button" onclick="prevMonthPregnancy()"><</button>
+        <h4 id="month-name-pregnancy" class="mx-4">Month Year</span></h4>
+        <button class="btn btn-primary" type="button" onclick="nextMonthPregnancy()">></button>
+    </div>
+    <div class="table-responsive-md">
+        <table class="table table-hover" id="calendar-pregnancy">
+        </table>
+    </div>
+
+    <style>
+        /* customize the first day of the month */
+        #calendar-pregnancy td:first-child {
+        color: red;
+        }
+    
+        /* customize the last day of the month */
+        #calendar-pregnancy td:last-child {
+        color: blue;
+        }
+    
+        /* customize specific days */
+        #calendar-pregnancy td[data-date="2023-04-15"] {
+            background-color: yellow;
+        }
+    
+        #calendar th {
+            text-align: center;
+        }
+    
+        #calendar-pregnancy td {
+            border: 1px solid black;
+            text-align: center;
+            font-size: larger;
+        }
+    
+        #calendar-pregnancy td:hover {
+            background-color: rgb(192, 192, 192);
+        }
+    
+        #calendar-pregnancy {
+            width: 100%;
+            height: 500px;
+        }
+    </style>
+    <% if (pregnancy) { %>
+        <script>
+            var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+            var startDate = new Date('<%= pregnancy.sexDate %>')
+            var currentDate = new Date('<%= pregnancy.sexDate %>')
+            var firstTrimester = []
+            var secondTrimester = []
+            var thirdTrimester = []
+
+            for(var i = 1; i <= 84; i++){
+                var date = months[currentDate.getMonth()] + ' ' + currentDate.getDate() + ', ' + currentDate.getFullYear()
+                firstTrimester.push(date)
+                currentDate.setDate(currentDate.getDate() + 1)
+            }
+            for(var i = 85; i <= 196; i++){
+                var date = months[currentDate.getMonth()] + ' ' + currentDate.getDate() + ', ' + currentDate.getFullYear()
+                secondTrimester.push(date)
+                currentDate.setDate(currentDate.getDate() + 1)
+            }
+            for(var i = 197; i <= 280; i++){
+                var date = months[currentDate.getMonth()] + ' ' + currentDate.getDate() + ', ' + currentDate.getFullYear()
+                thirdTrimester.push(date)
+                currentDate.setDate(currentDate.getDate() + 1)
+            }
+
+            async function displayPregnancyDates(){
+                var trimesters = [firstTrimester, secondTrimester, thirdTrimester]
+                var trimesterColors = ['#e67760', '#e6c060', '#9ce660']
+                var trimesterTextColors = ['#fff', '#fff', '#fff']
+                for(var i = 0; i < trimesters.length; i++){
+                    for(var j = 0; j < trimesters[i].length; j++){
+                        var parentTable = document.getElementById('calendar-pregnancy')
+                        var cell = parentTable.getElementsByClassName(trimesters[i][j])[0]
+                        if(cell == null)
+                            continue
+                            
+                        cell.style.color = trimesterTextColors[i]
+                        cell.style.backgroundColor = trimesterColors[i]
+                    }
+                }
+            }
+
+        </script>
+    <% } %>
+    <script>
+        var datePregnancy = new Date();
+        var yearPregnancy = datePregnancy.getFullYear();
+        var monthPregnancy = datePregnancy.getMonth();
+        var currentDayPregnancy = datePregnancy.getDay()
+        var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+        async function processDataPregnancy(){
+            const table = document.getElementById('calendar-pregnancy');
+            var monthLabel = document.getElementById('month-name-pregnancy')
+
+            monthLabel.innerText = months[monthPregnancy] + ' ' + yearPregnancy
+            table.innerHTML = `
+                <tr>
+                    <th>Sun</th>
+                    <th>Mon</th>
+                    <th>Tue</th>
+                    <th>Wed</th>
+                    <th>Thu</th>
+                    <th>Fri</th>
+                    <th>Sat</th>
+                </tr>
+            `
+            var limit = hasSixWeeksPregnancy(yearPregnancy, monthPregnancy) ? 6 : 5
+            for(var i = 1; i <= limit; i++){
+                table.innerHTML += `
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                `
+            }
+            const firstDay = new Date(yearPregnancy, monthPregnancy, 1);
+            const lastDay = new Date(yearPregnancy, monthPregnancy + 1, 0);
+
+            let day = 1;
+            for (let i = 1; i < table.rows.length; i++) {
+                for (let j = 0; j < table.rows[i].cells.length; j++) {
+                    const cell = table.rows[i].cells[j];
+                    if (i === 1 && j < firstDay.getDay()) {
+                    // empty cell before the first day of the month
+                        continue;
+                    }
+                    if (day > lastDay.getDate()) {
+                    // empty cell after the last day of the month
+                        continue;
+                    }
+                    cell.innerText = day;
+                    cell.classList = months[monthPregnancy] + ' ' + day + ', ' + yearPregnancy
+                    day++;
+                }
+            }
+            displayPregnancyDates()
+            updateCellEventsPregnancy()
+        }
+
+        async function nextMonthPregnancy(){
+            if(monthPregnancy == 11){
+                monthPregnancy = 0
+                yearPregnancy = yearPregnancy + 1
+            }else{
+                monthPregnancy = monthPregnancy + 1
+            }
+            processDataPregnancy()
+        }
+
+        async function prevMonthPregnancy(){
+            if(monthPregnancy == 0){
+                monthPregnancy = 11
+                yearPregnancy = yearPregnancy - 1
+            }else{
+                monthPregnancy = monthPregnancy - 1
+            }
+            processDataPregnancy()
+        }
+
+        function hasSixWeeksPregnancy(year, month) {
+            // create a new Date object for the first day of the month
+            const firstDayOfMonth = new Date(year, month, 1);
+
+            // get the day of the week for the first day of the month (0 = Sunday, 1 = Monday, etc.)
+            const firstDayOfWeek = firstDayOfMonth.getDay();
+
+            // calculate the number of days in the month
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+            const numDaysInMonth = lastDayOfMonth.getDate();
+
+            // calculate the total number of weeks in the month
+            const numWeeksInMonth = Math.ceil((numDaysInMonth + firstDayOfWeek) / 7);
+
+            // return true if there are 6 weeks in the month, false otherwise
+            return numWeeksInMonth === 6;
+        }
+
+        processDataPregnancy()
+
+        function updateCellEventsPregnancy(){
+            const cells = document.querySelectorAll('#calendar-pregnancy td');
+            cells.forEach(cell => {
+                cell.addEventListener('click', () => {
+                    var display = document.getElementById('month-name').innerText
+                    var day = cell.innerText
+                    var selectedDate = new Date(cell.id)
+                    if(selectedDate == 'Invalid Date'){
+                        alert('Error on picking date!')
+                        return
+                    }
+
+                    if(day == '')
+                        return
+                    
+                });
+            });
+        }
+
+        async function submitPregnancy(){
+            var date = new Date(document.getElementById('sexDate').value)
+            if(date == 'Invalid Date')
+                return
+            
+            $.post('/save-sexdate', {
+                date: date.toISOString()
+            }).done((response) => {
+                location.reload()
+            })
+        }
+        
+    </script>
+</div>
