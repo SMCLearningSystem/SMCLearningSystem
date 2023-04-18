@@ -1303,8 +1303,11 @@ async function getStudentsActivityDetails(activityId){
 
 async function getPredictedEndDate(userId, startDate){
     var date = new Date(startDate)
+    console.log(`date is ${date}`)
     var avgCyleDays = await getAverageCycle(startDate, userId)
+    console.log(`avgCycleDays is ${avgCyleDays}`)
     date.setDate(date.getDate() + avgCyleDays)
+    console.log(`future date is ${date}`)
     return date
 }
 
@@ -1315,7 +1318,7 @@ async function getAverageCycle(newDate, userId){
             studentId: account.student.id
         }
     })
-    if(periods.length == 0){
+    if(periods == null || periods.length == 0){
         return 28
     }else if(periods.length == 1){
         var date1 = new Date(periods[0].startDate)
@@ -1345,10 +1348,10 @@ function getDaysDiff(date1, date2) {
 }
 
 async function getCurrentPeriod(userId){
-    var student = await getUserById(userId)
+    var user = await getUserById(userId)
     var latestRecord = await prisma.period.findFirst({
         where:{
-            studentId: student.id
+            studentId: user.student.id
         },
         orderBy:{
             id: 'desc'

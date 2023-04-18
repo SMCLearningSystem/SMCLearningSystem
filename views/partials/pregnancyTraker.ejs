@@ -158,7 +158,9 @@
                     day++;
                 }
             }
-            displayPregnancyDates()
+            if('<%= pregnancy %>' != ''){
+                displayPregnancyDates()
+            }
             updateCellEventsPregnancy()
         }
 
