@@ -888,6 +888,7 @@ app.post('/delete-teacher-subject', async (req, res) => {
             id: subjectId
         }
     })
+    res.redirect('/profile')
 })
 
 app.get('/get-qrcode/:code', async (req, res) => {
