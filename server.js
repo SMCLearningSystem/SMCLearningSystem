@@ -705,7 +705,6 @@ app.post('/delete-activity/:subjectUniqueCode', async (req, res) => {
 app.post('/join-subject', async (req, res) => {
     const userId = await req.session.passport.user
     const subjectUniqueCode = await req.body.subjectUniqueCode
-    console.log(subjectUniqueCode)
     var subjectExist = await prisma.subject.findUnique({
         where:{
             uniqueCode: subjectUniqueCode
@@ -724,6 +723,27 @@ app.post('/join-subject', async (req, res) => {
             subjects:{
                 connect:{
                     uniqueCode: subjectUniqueCode
+                }
+            }
+        }
+    })
+    res.redirect('/profile')
+})
+
+app.post('/add-subject', checkAuthenticated, async (req, res) => {
+    var userId = await req.session.passport.user
+    var uniqueCode = await getSubjectUniqueCode()
+    await prisma.teacher.update({
+        where:{
+            userId: userId
+        },
+        data:{
+            subjects:{
+                create:{
+                    code: req.body.code,
+                    title: req.body.title,
+                    description: req.body.description,
+                    uniqueCode: uniqueCode
                 }
             }
         }
