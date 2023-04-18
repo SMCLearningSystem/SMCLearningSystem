@@ -1,7 +1,8 @@
 <div class="custom-card w-100">
     <div class="custom-card-header">Period Tracker</div>
     <div class="w-100 mt-3">
-        <button type="button" onclick="startPeriod()" class="btn btn-danger">Set new start period</button>
+        <button type="button" onclick="startPeriod()" class="btn btn-success">Set new start period</button>
+        <button type="button" onclick="clearPeriod()" class="btn btn-danger">Clear Period History and Data</button>
         <div id="alertDiv" class="alert alert-success" role="alert" style="visibility: hidden;">
             Choose a date in the calendar to record your start period!
         </div>
@@ -281,6 +282,12 @@
             hideAlert()
             isStart = false
         }
+    }
+
+    function clearPeriod(){
+        $.post('/clear-period').done(() =>{
+            location.reload()
+        })
     }
     
 </script>

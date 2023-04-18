@@ -891,6 +891,18 @@ app.post('/delete-teacher-subject', async (req, res) => {
     res.redirect('/profile')
 })
 
+app.post('/clear-period', async (req, res) => {
+    var userId = await req.session.passport.user
+    var account = await getUserById(userId)
+
+    await prisma.period.deleteMany({
+        where:{
+            studentId: account.student.id
+        }
+    })
+    res.redirect('/profile')
+})
+
 app.get('/get-qrcode/:code', async (req, res) => {
     const code = req.params.code
     qrcode.toFileStream(res, code, {
