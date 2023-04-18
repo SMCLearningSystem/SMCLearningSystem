@@ -549,7 +549,7 @@ app.post('/add-teacher', async (req, res) => {
     res.redirect('/admin')
 })
 
-app.post('/add-subject', checkAuthenticated, async (req, res) => {
+app.post('/ect', checkAuthenticated, async (req, res) => {
     var userId = await req.session.passport.user
     var uniqueCode = await getSubjectUniqueCode()
     await prisma.teacher.update({
@@ -875,6 +875,21 @@ app.post('/upload-material/:subjectUniqueCode/:activityId', materialUpload.singl
     res.redirect('/dashboard/' + subjectUniqueCode + '/' + activityId + '/edit-activity')
 })
 
+app.post('/delete-teacher-subject', async (req, res) => {
+    var userId = await req.session.passport.user
+    var subjectId = Number(await req.body.subjectId)
+
+    var account = await getUserById(userId)
+
+    disconnectFromStudent(subjectId)
+    
+    await prisma.subject.delete({
+        where:{
+            id: subjectId
+        }
+    })
+})
+
 app.get('/get-qrcode/:code', async (req, res) => {
     const code = req.params.code
     qrcode.toFileStream(res, code, {
@@ -888,6 +903,33 @@ app.get('/get-qrcode/:code', async (req, res) => {
         }
     });
 })
+
+async function disconnectFromStudent(subjectId){
+    var students = await prisma.student.findMany({
+        where:{
+            subjects:{
+                some:{
+                    id: subjectId
+                }
+            }
+        }
+    })
+
+    for(var i = 0; i < students.length; i ++){
+        await prisma.student.update({
+            where:{
+                id: students[i].id
+            },
+            data:{
+                subjects:{
+                    disconnect:{
+                        id: subjectId
+                    }
+                }
+            }
+        })
+    }
+}
 
 //logout?_method=DELETE POST METHOD
 app.delete('/logout', function(req, res) {

@@ -56,7 +56,7 @@ model Activity {
   name        String
   description String
   type        String
-  subject     Subject   @relation(fields: [subjectId], references: [id])
+  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   subjectId   Int
   startDate   String
   endDate     String
@@ -71,7 +71,7 @@ model Question {
   answer     String
   choices    String
   type       String
-  activity   Activity @relation(fields: [activityId], references: [id])
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   activityId Int
   answers    AnsweredQuestion[]
   file       File?
@@ -81,7 +81,7 @@ model AnsweredActivity {
   id          Int       @id @default(autoincrement())
   student     Student   @relation(fields: [studentId], references: [id])
   studentId   Int
-  activity    Activity  @relation(fields: [activityId], references: [id])
+  activity    Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   activityId  Int
   score       String
   answeredAt  DateTime  @default(now())
@@ -91,7 +91,7 @@ model AnsweredQuestion {
   id          Int       @id @default(autoincrement())
   student     Student   @relation(fields: [studentId], references: [id])
   studentId   Int
-  question    Question  @relation(fields: [questionId], references: [id])
+  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   questionId  Int
   answer      String 
 }
@@ -114,14 +114,14 @@ model Pregnancy {
 
 model File {
   id          Int       @id @default(autoincrement())
-  question    Question  @relation(fields: [questionId], references: [id])
+  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   questionId  Int       @unique
   fileName    String
 }
 
 model Material {
   id          Int       @id @default(autoincrement())
-  activity    Activity  @relation(fields: [activityId], references: [id])
+  activity    Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   activityId  Int       @unique
   fileName    String
 }

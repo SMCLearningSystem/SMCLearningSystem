@@ -31,6 +31,7 @@
             <th scope="col">Title</th>
             <th scope="col">Description</th>
             <th scope="col">Unique Enter Code</th>
+            <th scope="col">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -40,8 +41,18 @@
                     <td><%= subjects[i].title %></td>
                     <td><%= subjects[i].description %></td>
                     <td><%= subjects[i].uniqueCode %> </td>
+                    <td><button class="btn btn-danger" id="<%= subjects[i].id %>" onclick="dropSubject(id)">Drop Subject</button></td>
                 </tr>
             <% } %>
         </tbody>
-      </table>
+    </table>
 </div>
+<script>
+    async function dropSubject(subjectId){
+        $.post('/delete-teacher-subject', {
+            subjectId
+        }).done(() => {
+            location.reload()
+        })
+    }
+</script>
