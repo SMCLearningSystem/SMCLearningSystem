@@ -84,6 +84,7 @@
 
             async function displayPregnancyDates(){
                 var trimesters = [firstTrimester, secondTrimester, thirdTrimester]
+                var trimestersLabel = ['First Trimester', 'Second Trimester', 'Third Trimester']
                 var trimesterColors = ['#e67760', '#e6c060', '#9ce660']
                 var trimesterTextColors = ['#fff', '#fff', '#fff']
                 for(var i = 0; i < trimesters.length; i++){
@@ -93,6 +94,7 @@
                         if(cell == null)
                             continue
                             
+                        cell.innerHTML += '<br><p style="font-size: smaller;">' + trimestersLabel[i] + '</p>'
                         cell.style.color = trimesterTextColors[i]
                         cell.style.backgroundColor = trimesterColors[i]
                     }
