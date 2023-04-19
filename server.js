@@ -1357,7 +1357,12 @@ async function getStudentsActivityDetails(activityId){
         include:{
             student: {
                 include:{
-                    user: true
+                    user: true,
+                    answers:{
+                        include:{
+                            question: true
+                        }
+                    }
                 }
             }
         }
