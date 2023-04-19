@@ -163,7 +163,6 @@
             if('<%= pregnancy %>' != ''){
                 displayPregnancyDates()
             }
-            updateCellEventsPregnancy()
         }
 
         async function nextMonthPregnancy(){
@@ -205,25 +204,6 @@
         }
 
         processDataPregnancy()
-
-        function updateCellEventsPregnancy(){
-            const cells = document.querySelectorAll('#calendar-pregnancy td');
-            cells.forEach(cell => {
-                cell.addEventListener('click', () => {
-                    var display = document.getElementById('month-name').innerText
-                    var day = cell.innerText
-                    var selectedDate = new Date(cell.id)
-                    if(selectedDate == 'Invalid Date'){
-                        alert('Error on picking date!')
-                        return
-                    }
-
-                    if(day == '')
-                        return
-                    
-                });
-            });
-        }
 
         async function submitPregnancy(){
             var date = new Date(document.getElementById('sexDate').value)
