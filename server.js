@@ -23,9 +23,14 @@ const upload = multer({dest: 'public/uploads/'})
 const materialUpload = multer({
     storage: multer.diskStorage({
         destination: 'public/uploads',
-        filename: function(req, file, cb){
+        filename: async function(req, file, cb){
+            var currentFileName = file.originalname
             const activityId = req.params.activityId
-            const fileName = modifyFileName(file.originalname)
+            var activity = await getActivity(activityId)
+            if(activity.type == 'Exam'){
+                currentFileName = `${activityId}_${currentFileName}`
+            }
+            const fileName = modifyFileName(currentFileName)
             cb(null, fileName)
         }
     })
@@ -661,7 +666,7 @@ app.post('/add-question/:activityId/:subjectUniqueCode', checkAuthenticated, asy
     var choices = req.body.answer
     const isMultipleChoice = req.body.isMultipleChoice
     var type = ''
-    var explanation = ''
+    var explanation = req.body.explanation
 
     var answer = ''
 
@@ -702,6 +707,18 @@ app.post('/delete-question/:activityId', async (req, res) => {
         }
     })
     res.send({question: deletedQuestion})
+})
+
+app.post('/delete-all-questions/:subjectUniqueCode/:activityId', async (req, res) => {
+    const activityId = req.params.activityId
+    const subjectUniqueCode = req.params.subjectUniqueCode
+    await prisma.question.deleteMany({
+        where:{
+            activityId: Number(activityId)
+        }
+    }) 
+
+    res.redirect(`/dashboard/${subjectUniqueCode}/${activityId}/edit-activity`)
 })
 
 app.post('/delete-activity/:subjectUniqueCode', async (req, res) => {
@@ -864,6 +881,36 @@ app.post('/upload-material/:subjectUniqueCode/:activityId', materialUpload.singl
         }
     })
     res.redirect('/dashboard/' + subjectUniqueCode + '/' + activityId + '/edit-activity')
+})
+
+
+app.post('/upload-questions/:subjectUniqueCode/:activityId', materialUpload.single('file'), async (req, res) => {
+    const activityId = Number(req.params.activityId)
+    const subjectUniqueCode = req.params.subjectUniqueCode
+    const file = req.file
+    if(!file){
+        return res.status(400).send('No file uploaded')
+    }
+    const newOriginalFileName = modifyFileName(`${activityId}_${file.originalname}`)
+
+    var result = await getQuestionsData(newOriginalFileName)
+
+    for(var i = 0; i < result.length; i++){
+        var savedQuestion = await prisma.question.create({
+            data:{
+                prompt: result[i].question,
+                answer: result[i].answer,
+                choices: result[i].choices,
+                type: result[i].type,
+                explanation: result[i].explanation,
+                activityId: activityId
+            }
+        })
+    }
+    
+
+    res.redirect(`/dashboard/${subjectUniqueCode}/${activityId}/edit-activity`)
+
 })
 
 app.post('/delete-teacher-subject', async (req, res) => {
@@ -1384,27 +1431,71 @@ function shuffleChoices(choicesArr){
 }
 
 async function getQuestionsData(fileName){
-    const fileBuffer = fs.readFileSync(`public/uploads/${fileName}.xlsx`)
+    const fileBuffer = fs.readFileSync(`public/uploads/${fileName}`)
     const workbook = XLSX.read(fileBuffer, { type: 'buffer' })
     const sheetName = workbook.SheetNames[0]
     const sheet = workbook.Sheets[sheetName]
     const data = XLSX.utils.sheet_to_json(sheet, { header: 1 })
 
-    const headers = data[0];
+    const headers = data[0]
 
-    const result = [];
+    const result = []
 
-    for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        const obj = {};
+    for (let i = 1; i < data.length && i < 300; i++) {
+        const row = data[i]
+        var obj = {}
+        var answer = ''
 
         for (let j = 0; j < headers.length; j++) {
-            obj[headers[j]] = row[j];
+            var key = headers[j].toLowerCase()
+            if(j == 1){
+                obj[key] = changeType(row[j])
+                continue
+            }else if(j == 3){
+                obj[key] = improveChoices(row[1], row[j])
+                if(row[1].toLowerCase() == 'multiple choice'){
+                    answer = row[j].split('\r')[0]
+                }else if(row[1].toLowerCase() == 'identification'){
+                    answer = row[j]
+                }
+                continue
+            }
+            obj[headers[j].toLowerCase()] = row[j]
         }
-        result.push(obj);
+        obj = {
+            ...obj,
+            answer
+        }
+        result.push(obj)
     }
     
     return result
+}
+
+function changeType(type){
+    if(type.toLowerCase() == 'multiple choice'){
+        return 'mc'
+    }else if(type.toLowerCase() == 'identification'){
+        return 'i'
+    }
+
+    return '404'
+}
+
+function improveChoices(type, choices){
+    type = type.toLowerCase()
+    if(type == 'multiple choice'){
+        var splitChoices = choices.split('\r\n')
+        choices = ''
+        for(var i = 0; i < splitChoices.length; i++){
+            choices += splitChoices[i] + '/=/=/'
+        }
+        return choices
+    }else if(type == 'identification'){
+        return 'no choices'
+    }
+
+    return '404'
 }
 
 async function getExamStartRecord(studentId, activityId){

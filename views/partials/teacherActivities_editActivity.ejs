@@ -75,6 +75,12 @@
     <% } %>
     <div id="questionsDiv" class="m-0 p-0 w-100 mt-3">
 
+        <div class="w-100 m-0 mb-3 p-0 text-right">
+            <form action="/delete-all-questions/<%= subject.uniqueCode %>/<%= activity.id %>" method="POST">
+                <button class="btn btn-danger" type="submit">Remove All Questions</button>
+            </form>
+        </div>
+
         <% for( let i = 0; i < questions.length; i++ ) { %>
             <div class="a-question px-3" id="q<%= i + 1 %>" >
                 <div class="form-group m-0 p-0 pr-3">
@@ -124,6 +130,7 @@
                     </div>
 
                     <div class="w-100 m-0 p-0 mt-2">
+                        <input type="text" class="form-control mb-1" id="q<%= i + 1 %>e" name="q<%= i + 1 %>e" placeholder="Explanation here" value="<%= questions[i].explanation %>" disabled>
                         <button type="button" id="q<%= i + 1 %>_save" class="btn btn-success" value="<%= i + 1 %>" onclick="saveQuestion(value)" style="display: none;">Save Question</button>
                         <button type="button" class="btn btn-danger" value="<%= i + 1 %>" onclick="deleteQuestion(value)">Delete Question</button>
                     </div>
@@ -237,6 +244,7 @@
             var parentDiv = document.getElementById('q' + questionNumber)
             var question = document.getElementById('question' + questionNumber).value
             var mc = document.getElementById('mc' + questionNumber).checked
+            var explanation = document.getElementById('q' + questionNumber + 'e').value
             var answer = ''
             if(mc){
                 var choices = document.getElementById("q" + questionNumber + "mc_choices")
@@ -257,7 +265,8 @@
             $.post('/add-question/' + activityId + '/' + subjectUniqueCode, {
                 question: question,
                 isMultipleChoice: mc,
-                answer: answer
+                answer: answer,
+                explanation: explanation
             }).done(async (response) => {
                 if(response.savedQuestion){
                     document.getElementById('q' + questionNumber + '_save').style.display = 'none'
@@ -447,14 +456,17 @@
 
             //third div
             if(child3 != null){
-                if(child3.children[0] != null){
-                    var saveButton = child3.children[0]
+                var explanation = child3.children[0]
+                explanation.id = 'q' + i + 'e'
+                explanation.name = 'q' + i + 'e'
+                if(child3.children[1] != null){
+                    var saveButton = child3.children[1]
                     
                     saveButton.id = 'q' + i + '_save'
                     saveButton.onclick = null
                     saveButton.setAttribute('onclick', 'saveQuestion(' + i + ')')
                 }
-                var deleteButton = child3.children[1]
+                var deleteButton = child3.children[2]
                 deleteButton.onclick = null
                 deleteButton.setAttribute('onclick', 'deleteQuestion(' + i + ')')
             }
@@ -501,6 +513,7 @@
                             <input type="text" class="form-control mb-1" id="q${questionNumber}i_answer" name="q${questionNumber}i_answer" placeholder="Answer">
                         </div>
                         <div class="w-100 m-0 p-0 mt-2">
+                            <input type="text" class="form-control mb-1" id="q${questionNumber}e" name="q${questionNumber}e" placeholder="Explanation here">
                             <button type="button" id="q${questionNumber}_save" class="btn btn-success" onclick="saveQuestion(${questionNumber})">Save Question</button>
                             <button type="button" class="btn btn-danger" onclick="deleteQuestion(${questionNumber})">Delete Question</button>
                         </div>
