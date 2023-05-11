@@ -14,9 +14,7 @@ const qrcode = require('qrcode')
 const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
-const pdf2Image = require('pdf2image')
-const officeToPdf = require('office-to-pdf')
-const pdf2pic = require('pdf2pic')
+const XLSX = require('xlsx')
 const { PrismaClient } = require('@prisma/client')
 
 const prisma = new PrismaClient()
@@ -325,8 +323,21 @@ app.get('/todos', checkAuthenticated, async (req, res) => {
 })
 
 app.get('/activity/:subjectUniqueCode/:activity', checkAuthenticated, async (req, res) => {
+    var userId = await req.session.passport.user
     var subjectUniqueCode = await req.params.subjectUniqueCode
     var activityId = await req.params.activity
+
+    var activity = await getActivity(activityId)
+    var account = await getUserById(userId)
+    const dateTime = new Date().toISOString()
+
+    await prisma.examStartRecord.create({
+        data:{
+            timeStart: dateTime,
+            activityId: activity.id,
+            studentId: account.student.id
+        }
+    })
     res.redirect('/activity/' + subjectUniqueCode + '/' + activityId + '/1')
 })
 
@@ -361,6 +372,8 @@ app.get('/activity/:subjectUniqueCode/:activity/:questionNumber', checkAuthentic
     var subject = student.subjects
 
     var activity = subject[0].activities[0]
+
+    var examStartRecord = activity.type == 'Exam' ? await getExamStartRecord(student.id, activity.id) : null
 
     if(subject.length == 0){
         res.redirect('/dashboard')
@@ -416,7 +429,8 @@ app.get('/activity/:subjectUniqueCode/:activity/:questionNumber', checkAuthentic
         activity: activity,
         currentQuestion: question,
         questionNumber: questionNumber,
-        hrefLink: '/activity/' + subjectUniqueCode + '/' + activityId + '/'
+        hrefLink: '/activity/' + subjectUniqueCode + '/' + activityId + '/',
+        examStartRecord
     })
 })
 
@@ -432,7 +446,7 @@ app.get('/activity-result/:subjectUniqueCode/:activityId', checkAuthenticated, a
     }
 
     var score = await getStudentScore(account.student.id, activityId)
-    var activity = await getActivity(activityId)
+    var activity = await getActivityWithAnswers(activityId, account.student.id)
     
     res.render('pages/results.ejs', {
         score: score,
@@ -453,17 +467,12 @@ app.get('/profile', checkAuthenticated, async (req, res) => {
     }
     var subjects = await getSubjects(account)
 
-    var period = account.role == 'Student' && account.student.sex == 'Female' ? await getCurrentPeriod(userId) : null
-    var pregnancy = account.role == 'Student' && account.student.sex == 'Female' ? await getPregnancy(userId) : null
-
     account.password = censoredPassword
     res.render('pages/profile.ejs', {
         account: account,
         subjects: subjects,
         type: 'profile',
-        message: null,
-        period: period,
-        pregnancy: pregnancy
+        message: null
     })
 })
 
@@ -623,6 +632,7 @@ app.post('/add-activity/:subjectUniqueCode', checkAuthenticated, async (req, res
     const description = req.body.description
     const startDate = req.body.startDate
     const endDate = req.body.endDate
+    const examDuration = req.body.examDuration
     
     const subject = await prisma.subject.findUnique({
         where:{
@@ -637,7 +647,8 @@ app.post('/add-activity/:subjectUniqueCode', checkAuthenticated, async (req, res
             type: type,
             startDate: startDate,
             endDate: endDate,
-            subjectId: subject.id
+            subjectId: subject.id,
+            duration: examDuration && type == 'Exam' ? Number(examDuration) : 0
         }
     })
     res.redirect('/dashboard/' + subjectUniqueCode + '/' + activity.id + '/edit-activity') 
@@ -650,6 +661,7 @@ app.post('/add-question/:activityId/:subjectUniqueCode', checkAuthenticated, asy
     var choices = req.body.answer
     const isMultipleChoice = req.body.isMultipleChoice
     var type = ''
+    var explanation = ''
 
     var answer = ''
 
@@ -669,7 +681,8 @@ app.post('/add-question/:activityId/:subjectUniqueCode', checkAuthenticated, asy
             answer: answer,
             choices: choices,
             type: type,
-            activityId: Number(activityId)
+            activityId: Number(activityId),
+            explanation: explanation
         }
     })
 
@@ -811,48 +824,6 @@ app.post('/submit-activity', async (req, res) => {
     res.send({answeredActivity})
 })
 
-app.post('/save-startperiod', async (req, res) => {
-    const userId = await req.session.passport.user
-    const startDate = await req.body.startDate
-    const predictedEndDate = await getPredictedEndDate(userId, startDate)
-    
-    var account = await getUserById(userId)
-
-    await prisma.period.create({
-        data:{
-            startDate,
-            endDate: predictedEndDate,
-            studentId: account.student.id
-        }
-    })
-
-    res.redirect('/profile')
-})
-
-app.post('/save-sexdate', async (req, res) => {
-    const userId = await req.session.passport.user
-    const sexDate = await req.body.date
-
-    const account = await getUserById(userId)
-
-    var avgPregnancyLength = 280
-
-    var newSexDate = new Date(sexDate)
-    var endDate = new Date(sexDate)
-    endDate.setDate(endDate.getDate() + avgPregnancyLength)
-
-    const data = await prisma.pregnancy.create({
-        data:{
-            sexDate: newSexDate.toISOString(),
-            laborDate: endDate.toISOString(),
-            studentId: account.student.id
-        }
-    })
-    
-    res.redirect('/profile')
-
-})
-
 app.post('/upload/:questionId', upload.single('file'), async (req, res) => {
     var userId = await req.session.passport.user
     var file = await req.file
@@ -906,18 +877,6 @@ app.post('/delete-teacher-subject', async (req, res) => {
     await prisma.subject.delete({
         where:{
             id: subjectId
-        }
-    })
-    res.redirect('/profile')
-})
-
-app.post('/clear-period', async (req, res) => {
-    var userId = await req.session.passport.user
-    var account = await getUserById(userId)
-
-    await prisma.period.deleteMany({
-        where:{
-            studentId: account.student.id
         }
     })
     res.redirect('/profile')
@@ -1051,7 +1010,30 @@ async function getActivity(id){
             id: Number(id)
         },
         include:{
-            questions: true
+            questions: {
+                include:{
+                    answers: true
+                }
+            }
+        }
+    })
+}
+
+async function getActivityWithAnswers(activityId, studentId){
+    return await prisma.activity.findUnique({
+        where:{
+            id: Number(activityId)
+        },
+        include:{
+            questions: {
+                include:{
+                    answers: {
+                        where:{
+                            studentId: studentId
+                        }
+                    }
+                }
+            }
         }
     })
 }
@@ -1381,178 +1363,6 @@ async function getStudentsActivityDetails(activityId){
     return students
 }
 
-async function getPredictedEndDate(userId, startDate){
-    var date = new Date(startDate)
-    console.log(`date is ${date}`)
-    var avgCyleDays = await getAverageCycle(startDate, userId)
-    console.log(`avgCycleDays is ${avgCyleDays}`)
-    date.setDate(date.getDate() + avgCyleDays)
-    console.log(`future date is ${date}`)
-    return date
-}
-
-async function getAverageCycle(newDate, userId){
-    var account = await getUserById(userId)
-    var periods = await prisma.period.findMany({
-        where:{
-            studentId: account.student.id
-        }
-    })
-    if(periods == null || periods.length == 0){
-        return 28
-    }else if(periods.length == 1){
-        var date1 = new Date(periods[0].startDate)
-        var date2 = new Date(newDate)
-        return Math.floor(getDaysDiff(date1, date2) - 1)
-    }else{
-        var totalDays = 0
-        for(var i = 1; i < periods.length; i++){
-            var date1 = new Date(periods[i - 1].startDate)
-            var date2 = new Date(periods[i].startDate)
-            totalDays += getDaysDiff(date1, date2) - 1
-            if(i + 1 == periods.length){
-                date1 = date2
-                date2 = new Date(newDate)
-                totalDays += getDaysDiff(date1, date2) - 1
-            }
-        }
-        return Math.floor(totalDays / (periods.length))
-    }
-}
-
-function getDaysDiff(date1, date2) {
-    var date1ms = date1.getTime()
-    var date2ms = date2.getTime()
-    var diff = Math.abs(date2ms - date1ms)
-    return (Math.floor(diff / (1000 * 60 * 60 * 24)))
-}
-
-async function getCurrentPeriod(userId){
-    var user = await getUserById(userId)
-    var latestRecord = await prisma.period.findFirst({
-        where:{
-            studentId: user.student.id
-        },
-        orderBy:{
-            id: 'desc'
-        }
-    })
-
-    if(latestRecord != null){
-        latestRecord = {
-            ...latestRecord,        
-            phases: await getPhases(latestRecord)
-        }
-    }
-
-    return latestRecord
-}
-
-async function getPhases(period){
-    if(period == null)
-        return null
-    var startDate = new Date(period.startDate)
-    var endDate = new Date(period.endDate)
-    var avgCycleDuration = getDaysDiff(startDate, endDate)
-    var menstrual = 3
-    var follicular = 10
-    var ovulatory = avgCycleDuration >= 32 ? 2 : 1
-    var luteal = 10
-
-    var phases = [menstrual, follicular, luteal]
-    var totalGivenDays = menstrual + follicular + ovulatory + luteal
-
-    if(totalGivenDays < avgCycleDuration){
-        for(var i = totalGivenDays; totalGivenDays < avgCycleDuration; ){
-            for(var j = 0; j < phases.length; j++){
-                if(totalGivenDays >= avgCycleDuration){
-                    break
-                }
-                if(menstrual >= 7 && j == 0){
-                    continue
-                }
-                phases[j]++
-                totalGivenDays = phases[0] + phases[1] + ovulatory + phases[2]
-            }
-        }
-    }else if(totalGivenDays > avgCycleDuration){
-        for(var i = totalGivenDays; totalGivenDays > avgCycleDuration;){
-            for(var j = 1; j < phases.length; j++){
-                if(totalGivenDays <= avgCycleDuration){
-                    break
-                }
-                phases[j]--
-                totalGivenDays = phases[0] + phases[1] + ovulatory + phases[2]
-            }
-        }
-    }
-
-    menstrual = phases[0]
-    follicular = phases[1]
-    luteal = phases[2]
-
-    return {
-        menstrual, follicular, ovulatory, luteal
-    }
-}
-
-async function getPregnancy(userId){
-    const student = await getUserById(userId)
-    var latestRecord = await prisma.pregnancy.findFirst({
-        where:{
-            studentId: student.id
-        },
-        orderBy:{
-            id: 'desc'
-        }
-    })
-    if(latestRecord != null){
-        latestRecord = {
-            ...latestRecord,
-            firstTrimester: 84,
-            secondTrimester: 112,
-            thirdTrimester: 84,
-            phaseDetails: await getPhaseStatus(latestRecord)
-        }
-    }
-
-    return latestRecord
-}
-
-async function getPhaseStatus(pregnancy){
-    if(pregnancy == null)
-    return null
-    var phaseStatus = ['First Trimester', 'Second Trimester', 'Third Trimester']
-    var phaseDetails = [
-        'This phase begins at conception and lasts until around week 12 of pregnancy. During this time, the zygote develops into an embryo, and the major organs and body systems begin to form',
-        ' This phase begins around week 13 and lasts until around week 28 of pregnancy. During this time, the fetus grows and develops rapidly, and the mother may begin to feel movement.',
-        ' This phase begins around week 29 and lasts until birth. During this time, the fetus continues to grow and develop, and the mother may experience a variety of physical symptoms as the body prepares for labor and delivery.'
-    ]
-
-    var currentDate = new Date()
-    var sexDate = new Date(pregnancy.sexDate)
-    var diff = getDaysDiff(sexDate, currentDate)
-
-    var returnValue = {
-        title: '',
-        details: ''
-    }
-
-    var i = 0
-    if(diff <= 84){
-        i = 0
-    }else if(diff <= 112 + 84){
-        i = 1
-    }else{
-        i = 2
-    }
-
-    returnValue.title = phaseStatus[i]
-    returnValue.details = phaseDetails[i]
-
-    return returnValue
-}
-
 async function getMaterial(activity){
     var material = await prisma.material.findUnique({
         where:{
@@ -1567,15 +1377,45 @@ function modifyFileName(fileName){
     return cleanedString
 }
 
-app.get('/api/test', async (req, res) => {
-    var choices = 'Yes/=/=/No'
-    res.send(shuffleChoices(choices.split('/=/=/')))
-})
-
 function shuffleChoices(choicesArr){
     const filteredArr = choicesArr.filter(element => element !== '')
     var newChoicesArr = filteredArr.sort(() => Math.random() - 0.5)
     return newChoicesArr
+}
+
+async function getQuestionsData(fileName){
+    const fileBuffer = fs.readFileSync(`public/uploads/${fileName}.xlsx`)
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer' })
+    const sheetName = workbook.SheetNames[0]
+    const sheet = workbook.Sheets[sheetName]
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 })
+
+    const headers = data[0];
+
+    const result = [];
+
+    for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        const obj = {};
+
+        for (let j = 0; j < headers.length; j++) {
+            obj[headers[j]] = row[j];
+        }
+        result.push(obj);
+    }
+    
+    return result
+}
+
+async function getExamStartRecord(studentId, activityId){
+    return await prisma.examStartRecord.findFirst({
+        where:{
+            AND:[
+                {studentId: studentId},
+                {activityId: activityId}
+            ]
+        }
+    })
 }
 
 function generateRandomString(length) {

@@ -7,7 +7,7 @@
 <body>
     <%- include('../partials/studentNavbar') %>
     <div class="main m-0 p-4 center-items">
-        <div class="activity-result m-0 p-2">
+        <div class="activity-result m-0 p-2 h-100">
             <div class="progress-container mx-auto">
                 <svg class="progress-svg" viewBox="0 0 100 100">
                     <circle class="progress-circle" cx="50" cy="50" r="45"></circle>
@@ -21,9 +21,19 @@
                 <h3>You have finished this activity!</h3>
                 <a href="/todos" class="btn btn-outline-primary mt-3">Go back</a>
             </div>
+            <% for( let i = 0; i < activity.questions.length; i++ ) { %>
+                <% var studentAnswer =  activity.questions[i].answers[0].answer %>
+                <% var answer = activity.questions[i].answer %>
+                <div class="m-0 p-0 px-5 pt-3 w-100">
+                    <h3><%= (i + 1) + '. ' + activity.questions[i].prompt %></h3>
+                    <h5>Your Answer: <%= studentAnswer %></h5>
+                    <p><span><%= (studentAnswer == answer) ? 'Correct.' : `Wrong, Answer is ${answer}.` %></span> <%= activity.questions[i].explanation %></p>
+                </div>
+            <% } %>
         </div>
         <script>
-            function animateProgressBar(progress) {
+            function animateProgressBar(data) {
+                progress = Number(data)
                 const bar = document.querySelector('.progress-bar')
                 const number = document.querySelector('.progress-number')
                 const circumference = 2 * Math.PI * bar.getAttribute('r')
@@ -37,7 +47,7 @@
                 bar.animate([{ strokeDashoffset: circumference }, { strokeDashoffset: offset }], { duration: 1000, easing: 'ease-out' })
             }
           
-          animateProgressBar(<%= (Number(score) / Number(total)) * 100 %>)
+          animateProgressBar('<%= (Number(score) / Number(total)) * 100 %>')
         </script>
     </div>
 </body>

@@ -3,12 +3,16 @@
     <form action="/add-activity/<%= uniqueCode %>" method="POST">
         <div class="form-group w-25">
             <label for="activityType">Activity Type</label>
-            <select class="form-control" name="type" id="activityType">
+            <select class="form-control" name="type" onchange="checkIfNeedDuration()" id="activityType">
                 <option>Assignment</option>
                 <option>Quiz</option>
                 <option>Exam</option>
                 <option>Lesson</option>
             </select>
+        </div>
+        <div id="examDurationDiv" style="display: none;" class="form-group w-25">
+            <label for="examDuration">Exam Duration By Minutes</label> 
+            <input type="number" class="form-control" id="examDuration" name="examDuration" placeholder="Exam Duration By Minutes">
         </div>
         <div class="row m-0 p-0 w-100 mt-3">
             <div class="form-group col-12 col-md-6 m-0 p-0 pr-3">
@@ -39,6 +43,15 @@
             const splitUrl = url.split("/");
             var subjectUniqueCode = splitUrl[splitUrl.length - 2];
             window.location.href = '/dashboard/' + subjectUniqueCode + '/activities'
+        }
+        function checkIfNeedDuration(){
+            var examDurationDiv = document.getElementById('examDurationDiv')
+            var typeValue = document.getElementById('activityType')
+            if(typeValue.value == 'Exam'){
+                examDurationDiv.style.display = 'block'
+            }else{
+                examDurationDiv.style.display = 'none'
+            }
         }
     </script>
 </div>

@@ -33,6 +33,7 @@
                     <% } %>
                     </div>
                 <div class="col-12 col-md-5">
+                    <h5 id="timer" class="timer"></h5>
                     <% if (currentQuestion.type == 'mc') { %>
                         <h5 class="activity-info-title">Select your answer</h5>
                         <br>
@@ -101,6 +102,43 @@
                     })
                 }
             })
+        </script>
+    <% } %>
+    <% if (activity.type == 'Exam') { %>
+        <script>
+            function startCountdown(startTime, durationMinutes) {
+                const start = new Date(startTime)
+                console.log(start, durationMinutes)
+                const durationSeconds = durationMinutes * 60
+                const countdownInterval = setInterval(() => {
+                    const now = new Date()
+                    const differenceSeconds = Math.floor((start.getTime() - now.getTime()) / 1000)
+                    const remainingSeconds = Math.max(0, durationSeconds + differenceSeconds)
+                    if (remainingSeconds === 0) {
+                        clearInterval(countdownInterval)
+                        const url = window.location.href
+                        const segments = url.split("/")
+                        const number = segments[segments.length - 2]
+                        $.post('/submit-activity', {
+                            activityId: Number(number)
+                        }).done(async (response) => {
+                            if(response.answeredActivity){
+                                location.reload()
+                            }else{
+                                alert('Can\'t submit activity!')
+                            }
+                        }).fail((error) => {
+                            console.error(error)
+                        })
+                    } else {
+                        const remainingHours = Math.floor(remainingSeconds / 3600)
+                        const remainingMinutes = Math.floor((remainingSeconds % 3600) / 60)
+                        const remainingSecs = remainingSeconds % 60
+                        $('#timer').text(`${remainingHours.toString().padStart(2, '0')}:${remainingMinutes.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`)
+                    }
+                }, 1000); // Update every second
+            }
+            startCountdown('<%= examStartRecord.timeStart %>', Number('<%= activity.duration %>'))
         </script>
     <% } %>
     <script>

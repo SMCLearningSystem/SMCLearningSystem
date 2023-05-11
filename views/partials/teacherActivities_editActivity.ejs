@@ -11,6 +11,12 @@
             <option <%= (activity.type == 'Exam') ? 'selected' : '' %>>Exam</option>
             <option <%= (activity.type == 'Lesson') ? 'selected' : '' %>>Lesson</option>
         </select>
+        <% if (activity.type == 'Exam') { %>
+            <div id="examDurationDiv" class="form-group mt-3">
+                <label for="examDuration">Exam Duration By Minutes</label> 
+                <input type="number" class="form-control" id="examDuration" name="examDuration" value="<%= activity.duration %>" placeholder="Exam Duration By Minutes">
+            </div>
+        <% } %>
     </div>
     <div class="row m-0 p-0 w-100 mt-3">
         <div class="form-group col-12 col-md-6 m-0 p-0 pr-3">
@@ -41,6 +47,21 @@
         <div class="m-0 p-0 w-100 my-3">
             <h5>Upload Materials (.ppt, .ppt, .doc, .docx, .pdf)</h5>
             <form action="/upload-material/<%= subject.uniqueCode %>/<%= activity.id %>" method="POST" enctype="multipart/form-data">
+                <input type="file" name="file">
+                <button class="btn btn-outline-success">Upload File</button>
+            </form>
+            <% if (material) { %>
+                <div class="w-100 m-0 p-0 my-3">
+                    <h5>Existing File: <%= material.fileName %></h5>
+                    <a href="/uploads/<%= material.fileName %>" class="btn btn-outline-secondary">Download File</a>
+                </div>
+            <% } %>
+        </div>
+    <% } %>
+    <% if (activity.type != 'Lesson') { %>
+        <div class="m-0 p-0 w-100 my-3">
+            <h5>Upload questions via excel file (.xlsx)</h5>
+            <form action="/upload-questions/<%= subject.uniqueCode %>/<%= activity.id %>" method="POST" enctype="multipart/form-data">
                 <input type="file" name="file">
                 <button class="btn btn-outline-success">Upload File</button>
             </form>

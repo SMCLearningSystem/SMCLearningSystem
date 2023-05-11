@@ -523,6 +523,11 @@
     align-items: center;
     margin-top: 40px;
 }
+
+.timer {
+    color: rgb(227, 75, 10);
+    font-weight: 600;
+}
   
 @keyframes spin {
     0% {

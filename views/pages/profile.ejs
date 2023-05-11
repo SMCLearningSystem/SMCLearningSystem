@@ -117,14 +117,6 @@
                             <%- include('../partials/teacherSubjects') %>
                         <% } %>
                     </div>
-                    <% if (account.role == 'Student' && account.student.sex == 'Female') { %>
-                        <div class="tab-pane fade" id="v-pills-period" role="tabpanel" aria-labelledby="v-pills-period-tab">
-                            <%- include('../partials/periodTracker') %>
-                        </div>
-                        <div class="tab-pane fade" id="v-pills-pregnancy" role="tabpanel" aria-labelledby="v-pills-pregnancy-tab">
-                            <%- include('../partials/pregnancyTraker') %>
-                        </div>
-                    <% } %>
                 </div>
             </div>
         </div>
