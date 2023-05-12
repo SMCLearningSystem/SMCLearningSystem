@@ -375,7 +375,7 @@ app.get('/activity/:subjectUniqueCode/:activity/:questionNumber', checkAuthentic
         }
     })
     var subject = student.subjects
-
+    console.log(subject[0])
     var activity = subject[0].activities[0]
 
     var examStartRecord = activity.type == 'Exam' ? await getExamStartRecord(student.id, activity.id) : null
@@ -1000,7 +1000,11 @@ async function getUserById(id){
         },
         include:{
             teacher: true,
-            student: true
+            student: {
+                include: {
+                    subjects: true
+                }
+            }
         }
     })
     return user
@@ -1120,7 +1124,7 @@ async function getActivities(subject){
 
 async function getActivitiesBySubjectAndUser(subjectId = null, userId, type = null) {
     var newSubjectId = Number(subjectId)
-    const activities = await prisma.activity.findMany({
+    var activities = await prisma.activity.findMany({
         where: subjectId ? { subjectId: newSubjectId } : {},
         include: {
             answers: true,
@@ -1129,6 +1133,19 @@ async function getActivitiesBySubjectAndUser(subjectId = null, userId, type = nu
     })
 
     const account = await getUserById(userId)
+
+    for(var i = activities.length - 1; i >= 0; i--){
+        var doesExist = false
+        for(var j = 0; j < account.student.subjects.length; j++){
+            if (activities[i].subjectId == account.student.subjects[j].id){
+                doesExist = true
+                break
+            }
+        }
+        if(!doesExist){
+            activities = activities.splice(i, i)
+        }
+    }
   
     const formattedActivities = await Promise.all(activities
         .filter((activity) => {
